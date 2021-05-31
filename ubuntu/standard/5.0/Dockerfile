@@ -117,10 +117,10 @@ RUN curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscli
 
 # Install env tools for runtimes
 # Dotnet
-ENV PATH "/root/.dotnet/:/root/.dotnet/tools/:$PATH"
-RUN set -ex  \
-&& wget -nv -O /usr/local/bin/dotnet-install.sh https://dot.net/v1/dotnet-install.sh \
-&& chmod +x /usr/local/bin/dotnet-install.sh
+# ENV PATH "/root/.dotnet/:/root/.dotnet/tools/:$PATH"
+# RUN set -ex  \
+# && wget -nv -O /usr/local/bin/dotnet-install.sh https://dot.net/v1/dotnet-install.sh \
+# && chmod +x /usr/local/bin/dotnet-install.sh
 
 #nodejs
 ARG SRC_DIR="/usr/src"
@@ -129,24 +129,24 @@ RUN git clone https://github.com/tj/n $N_SRC_DIR \
      && cd $N_SRC_DIR && make install
 
 #ruby
-ARG RBENV_SRC_DIR="/usr/local/rbenv"
+# ARG RBENV_SRC_DIR="/usr/local/rbenv"
 
-ENV PATH="/root/.rbenv/shims:$RBENV_SRC_DIR/bin:$RBENV_SRC_DIR/shims:$PATH" \
-    RUBY_BUILD_SRC_DIR="$RBENV_SRC_DIR/plugins/ruby-build"
+# ENV PATH="/root/.rbenv/shims:$RBENV_SRC_DIR/bin:$RBENV_SRC_DIR/shims:$PATH" \
+#     RUBY_BUILD_SRC_DIR="$RBENV_SRC_DIR/plugins/ruby-build"
 
-RUN set -ex \
-    && git clone https://github.com/rbenv/rbenv.git $RBENV_SRC_DIR \
-    && mkdir -p $RBENV_SRC_DIR/plugins \
-    && git clone https://github.com/rbenv/ruby-build.git $RUBY_BUILD_SRC_DIR \
-    && sh $RUBY_BUILD_SRC_DIR/install.sh
+# RUN set -ex \
+#     && git clone https://github.com/rbenv/rbenv.git $RBENV_SRC_DIR \
+#     && mkdir -p $RBENV_SRC_DIR/plugins \
+#     && git clone https://github.com/rbenv/ruby-build.git $RUBY_BUILD_SRC_DIR \
+#     && sh $RUBY_BUILD_SRC_DIR/install.sh
 
 #python
 RUN curl https://pyenv.run | bash
 ENV PATH="/root/.pyenv/shims:/root/.pyenv/bin:$PATH"
 
 #php
-RUN curl -L https://raw.githubusercontent.com/phpenv/phpenv-installer/master/bin/phpenv-installer | bash
-ENV PATH="/root/.phpenv/shims:/root/.phpenv/bin:$PATH"
+# RUN curl -L https://raw.githubusercontent.com/phpenv/phpenv-installer/master/bin/phpenv-installer | bash
+# ENV PATH="/root/.phpenv/shims:/root/.phpenv/bin:$PATH"
 
 #go
 RUN git clone https://github.com/syndbg/goenv.git $HOME/.goenv
@@ -159,43 +159,43 @@ FROM tools AS runtimes
 
 #****************     .NET-CORE     *******************************************************
 
-ENV DOTNET_31_SDK_VERSION="3.1.404"
-ENV DOTNET_5_SDK_VERSION="5.0.202"
-ENV DOTNET_ROOT="/root/.dotnet"
+# ENV DOTNET_31_SDK_VERSION="3.1.404"
+# ENV DOTNET_5_SDK_VERSION="5.0.202"
+# ENV DOTNET_ROOT="/root/.dotnet"
 
-# Add .NET Core 3.1 Global Tools install folder to PATH
-RUN  /usr/local/bin/dotnet-install.sh -v $DOTNET_31_SDK_VERSION \
-     && dotnet --list-sdks \
-     && rm -rf /tmp/*
+# # Add .NET Core 3.1 Global Tools install folder to PATH
+# RUN  /usr/local/bin/dotnet-install.sh -v $DOTNET_31_SDK_VERSION \
+#      && dotnet --list-sdks \
+#      && rm -rf /tmp/*
 
-# Add .NET Core 5 Global Tools install folder to PATH
-RUN  /usr/local/bin/dotnet-install.sh -v $DOTNET_5_SDK_VERSION \
-     && dotnet --list-sdks \
-     && rm -rf /tmp/*
+# # Add .NET Core 5 Global Tools install folder to PATH
+# RUN  /usr/local/bin/dotnet-install.sh -v $DOTNET_5_SDK_VERSION \
+#      && dotnet --list-sdks \
+#      && rm -rf /tmp/*
 
-# Trigger the population of the local package cache
-ENV NUGET_XMLDOC_MODE skip
-RUN set -ex \
-    && mkdir warmup \
-    && cd warmup \
-    && dotnet new \
-    && cd .. \
-    && rm -rf warmup \
-    && rm -rf /tmp/NuGetScratch
+# # Trigger the population of the local package cache
+# ENV NUGET_XMLDOC_MODE skip
+# RUN set -ex \
+#     && mkdir warmup \
+#     && cd warmup \
+#     && dotnet new \
+#     && cd .. \
+#     && rm -rf warmup \
+#     && rm -rf /tmp/NuGetScratch
 
-# Install Powershell Core
-# See instructions at https://docs.microsoft.com/en-us/powershell/scripting/setup/installing-powershell-core-on-linux
-ARG POWERSHELL_VERSION=7.1.0
-ARG POWERSHELL_DOWNLOAD_URL=https://github.com/PowerShell/PowerShell/releases/download/v$POWERSHELL_VERSION/powershell-$POWERSHELL_VERSION-linux-x64.tar.gz
-ARG POWERSHELL_DOWNLOAD_SHA=F926A6CCE202F08F05D0BB662719F37CFA78CC073A9DE37B0A9B94F510F8D418
+# # Install Powershell Core
+# # See instructions at https://docs.microsoft.com/en-us/powershell/scripting/setup/installing-powershell-core-on-linux
+# ARG POWERSHELL_VERSION=7.1.0
+# ARG POWERSHELL_DOWNLOAD_URL=https://github.com/PowerShell/PowerShell/releases/download/v$POWERSHELL_VERSION/powershell-$POWERSHELL_VERSION-linux-x64.tar.gz
+# ARG POWERSHELL_DOWNLOAD_SHA=F926A6CCE202F08F05D0BB662719F37CFA78CC073A9DE37B0A9B94F510F8D418
 
-RUN set -ex \
-    && curl -SL $POWERSHELL_DOWNLOAD_URL --output powershell.tar.gz \
-    && echo "$POWERSHELL_DOWNLOAD_SHA powershell.tar.gz" | sha256sum -c - \
-    && mkdir -p /opt/microsoft/powershell/$POWERSHELL_VERSION \
-    && tar zxf powershell.tar.gz -C /opt/microsoft/powershell/$POWERSHELL_VERSION \
-    && rm powershell.tar.gz \
-    && ln -s /opt/microsoft/powershell/$POWERSHELL_VERSION/pwsh /usr/bin/pwsh
+# RUN set -ex \
+#     && curl -SL $POWERSHELL_DOWNLOAD_URL --output powershell.tar.gz \
+#     && echo "$POWERSHELL_DOWNLOAD_SHA powershell.tar.gz" | sha256sum -c - \
+#     && mkdir -p /opt/microsoft/powershell/$POWERSHELL_VERSION \
+#     && tar zxf powershell.tar.gz -C /opt/microsoft/powershell/$POWERSHELL_VERSION \
+#     && rm powershell.tar.gz \
+#     && ln -s /opt/microsoft/powershell/$POWERSHELL_VERSION/pwsh /usr/bin/pwsh
 #****************     END .NET-CORE     *******************************************************
 
 
@@ -216,11 +216,11 @@ RUN     n $NODE_14_VERSION && npm install --save-dev -g -f grunt && npm install 
 
 #**************** RUBY *********************************************************
 
-ENV RUBY_26_VERSION="2.6.6"
-ENV RUBY_27_VERSION="2.7.2"
+# ENV RUBY_26_VERSION="2.6.6"
+# ENV RUBY_27_VERSION="2.7.2"
 
-RUN rbenv install $RUBY_26_VERSION; rm -rf /tmp/*
-RUN rbenv install $RUBY_27_VERSION; rm -rf /tmp/*; rbenv global $RUBY_27_VERSION;ruby -v
+# RUN rbenv install $RUBY_26_VERSION; rm -rf /tmp/*
+# RUN rbenv install $RUBY_27_VERSION; rm -rf /tmp/*; rbenv global $RUBY_27_VERSION;ruby -v
 
 #**************** END RUBY *****************************************************
 
@@ -258,27 +258,27 @@ RUN set -ex \
 #**************** END PYTHON *****************************************************
 
 #****************      PHP     ****************************************************
-ENV PHP_73_VERSION="7.3.25"
-ENV PHP_74_VERSION="7.4.13"
-ENV PHP_80_VERSION="8.0.0"
+# ENV PHP_73_VERSION="7.3.25"
+# ENV PHP_74_VERSION="7.4.13"
+# ENV PHP_80_VERSION="8.0.0"
 
-RUN curl -L https://raw.githubusercontent.com/phpenv/phpenv-installer/master/bin/phpenv-installer | bash
-ENV PATH="/root/.phpenv/shims:/root/.phpenv/bin:$PATH"
-COPY tools/runtime_configs/php/$PHP_73_VERSION /root/.phpenv/plugins/php-build/share/php-build/definitions/$PHP_73_VERSION
-RUN phpenv install $PHP_73_VERSION; rm -rf /tmp/*; phpenv global $PHP_73_VERSION
-RUN echo "memory_limit = 1G;" >> "/root/.phpenv/versions/$PHP_73_VERSION/etc/conf.d/memory.ini"
+# RUN curl -L https://raw.githubusercontent.com/phpenv/phpenv-installer/master/bin/phpenv-installer | bash
+# ENV PATH="/root/.phpenv/shims:/root/.phpenv/bin:$PATH"
+# COPY tools/runtime_configs/php/$PHP_73_VERSION /root/.phpenv/plugins/php-build/share/php-build/definitions/$PHP_73_VERSION
+# RUN phpenv install $PHP_73_VERSION; rm -rf /tmp/*; phpenv global $PHP_73_VERSION
+# RUN echo "memory_limit = 1G;" >> "/root/.phpenv/versions/$PHP_73_VERSION/etc/conf.d/memory.ini"
 
 
-COPY tools/runtime_configs/php/$PHP_74_VERSION /root/.phpenv/plugins/php-build/share/php-build/definitions/$PHP_74_VERSION
-RUN phpenv install $PHP_74_VERSION; rm -rf /tmp/*; phpenv global $PHP_74_VERSION
-RUN echo "memory_limit = 1G;" >> "/root/.phpenv/versions/$PHP_74_VERSION/etc/conf.d/memory.ini"
+# COPY tools/runtime_configs/php/$PHP_74_VERSION /root/.phpenv/plugins/php-build/share/php-build/definitions/$PHP_74_VERSION
+# RUN phpenv install $PHP_74_VERSION; rm -rf /tmp/*; phpenv global $PHP_74_VERSION
+# RUN echo "memory_limit = 1G;" >> "/root/.phpenv/versions/$PHP_74_VERSION/etc/conf.d/memory.ini"
 
-COPY tools/runtime_configs/php/$PHP_80_VERSION /root/.phpenv/plugins/php-build/share/php-build/definitions/$PHP_80_VERSION
-RUN phpenv install $PHP_80_VERSION; rm -rf /tmp/*; phpenv global $PHP_80_VERSION
-RUN echo "memory_limit = 1G;" >> "/root/.phpenv/versions/$PHP_80_VERSION/etc/conf.d/memory.ini"
+# COPY tools/runtime_configs/php/$PHP_80_VERSION /root/.phpenv/plugins/php-build/share/php-build/definitions/$PHP_80_VERSION
+# RUN phpenv install $PHP_80_VERSION; rm -rf /tmp/*; phpenv global $PHP_80_VERSION
+# RUN echo "memory_limit = 1G;" >> "/root/.phpenv/versions/$PHP_80_VERSION/etc/conf.d/memory.ini"
 
-# Install Composer globally
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
+# # Install Composer globally
+# RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
 #****************      END PHP     ****************************************************
 
 #****************     GOLANG     ****************************************************
@@ -431,8 +431,8 @@ FROM runtimes_n_corretto AS std_v5
 # Activate runtime versions specific to image version.
 RUN n $NODE_14_VERSION
 RUN pyenv  global $PYTHON_39_VERSION
-RUN phpenv global $PHP_80_VERSION
-RUN rbenv  global $RUBY_27_VERSION
+# RUN phpenv global $PHP_80_VERSION
+# RUN rbenv  global $RUBY_27_VERSION
 RUN goenv global  $GOLANG_15_VERSION
 
 # Configure SSH
@@ -445,3 +445,22 @@ COPY amazon-ssm-agent.json          /etc/amazon/ssm/
 ENTRYPOINT ["dockerd-entrypoint.sh"]
 
 #=======================END of STD:5.0  =================
+
+# Env variables
+ENV SCALA_VERSION 2.13.6
+
+# Install Scala
+## Piping curl directly in tar
+RUN \
+  curl -fsL https://downloads.typesafe.com/scala/$SCALA_VERSION/scala-$SCALA_VERSION.tgz | tar xfz - -C /root/ && \
+  echo >> /root/.bashrc && \
+  echo "export PATH=~/scala-$SCALA_VERSION/bin:$PATH" >> /root/.bashrc
+
+RUN echo "[repositories]" >> ~/.sbt/repositories && \
+    echo "  local" >> ~/.sbt/repositories && \
+    echo "  aliyun: https://maven.aliyun.com/repository/central/" >> ~/.sbt/repositories && \
+    echo "  central: https://repo1.maven.org/maven2/" >> ~/.sbt/repositories
+
+RUN mkdir ~/.pip && touch ~/.pip/pip.conf && \
+    echo "[global]" >> ~/.pip/pip.conf && \
+    echo "index-url = https://mirrors.aliyun.com/pypi/simple" >> ~/.pip/pip.conf
