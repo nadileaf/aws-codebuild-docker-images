@@ -458,7 +458,7 @@ RUN \
 
 RUN echo "[repositories]" >> ~/.sbt/repositories && \
     echo "  local" >> ~/.sbt/repositories && \
-    echo "  aliyun: https://maven.aliyun.com/repository/central/" >> ~/.sbt/repositories && \
+    echo "  aliyun: https://maven.aliyun.com/repository/public" >> ~/.sbt/repositories && \
     echo "  central: https://repo1.maven.org/maven2/" >> ~/.sbt/repositories
 
 RUN mkdir ~/.pip && touch ~/.pip/pip.conf && \
