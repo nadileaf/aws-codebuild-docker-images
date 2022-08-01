@@ -9,24 +9,25 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 
-FROM amazonlinux:2 AS core
+FROM public.ecr.aws/amazonlinux/amazonlinux:2 AS core
 
 ENV EPEL_REPO="https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
 
 # Install git, SSH, and other utilities
 RUN set -ex \
-    && yum install -y openssh-clients \
+    && yum install -yq openssh-clients \
     && mkdir ~/.ssh \
     && touch ~/.ssh/known_hosts \
     && ssh-keyscan -t rsa,dsa -H github.com >> ~/.ssh/known_hosts \
     && ssh-keyscan -t rsa,dsa -H bitbucket.org >> ~/.ssh/known_hosts \
     && chmod 600 ~/.ssh/known_hosts \
-    && yum install -y $EPEL_REPO \
+    && yum install -yq $EPEL_REPO \
     && rpm --import https://download.mono-project.com/repo/xamarin.gpg \
     && curl https://download.mono-project.com/repo/centos7-stable.repo | tee /etc/yum.repos.d/mono-centos7-stable.repo \
     && amazon-linux-extras enable corretto8 \
-    && yum groupinstall -y "Development tools" \
-    && yum install -y \
+    && amazon-linux-extras enable docker \
+    && yum groupinstall -yq "Development tools" \
+    && yum install -yq \
            GeoIP-devel ImageMagick asciidoc bzip2-devel bzr bzrtools cvs cvsps \
            docbook-dtds docbook-style-xsl dpkg-dev e2fsprogs expat-devel expect fakeroot \
            glib2-devel groff gzip icu iptables jq krb5-server libargon2-devel \
@@ -37,7 +38,8 @@ RUN set -ex \
            ncurses-devel oniguruma-devel openssl openssl-devel perl-DBD-SQLite \
            perl-DBI perl-HTTP-Date perl-IO-Pty-Easy perl-TimeDate perl-YAML-LibYAML \
            postgresql-devel procps-ng python-configobj readline-devel rsync sgml-common \
-           subversion-perl tar tcl tk vim wget which xfsprogs xmlto xorg-x11-server-Xvfb xz-devel
+           subversion-perl tar tcl tk vim wget which xfsprogs xmlto xorg-x11-server-Xvfb xz-devel \
+           amazon-ecr-credential-helper
 
 RUN useradd codebuild-user
 
@@ -51,7 +53,7 @@ RUN set -ex \
    && GIT_TAR_FILE=git-$GIT_VERSION.tar.gz \
    && GIT_SRC=https://github.com/git/git/archive/v${GIT_VERSION}.tar.gz  \
    && curl -L -o $GIT_TAR_FILE $GIT_SRC \
-   && tar zxvf $GIT_TAR_FILE \
+   && tar zxf $GIT_TAR_FILE \
    && cd git-$GIT_VERSION \
    && make -j4 prefix=/usr \
    && make install prefix=/usr \
@@ -79,17 +81,18 @@ RUN set -ex \
 # https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
 RUN curl -sS -o /usr/local/bin/aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.16.8/2020-04-16/bin/linux/arm64/aws-iam-authenticator \
     && curl -sS -o /usr/local/bin/kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.16.8/2020-04-16/bin/linux/arm64/kubectl \
-    && chmod +x /usr/local/bin/kubectl /usr/local/bin/aws-iam-authenticator
+    && curl -sS -o /usr/local/bin/ecs-cli https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-arm64-latest \
+    && chmod +x /usr/local/bin/kubectl /usr/local/bin/aws-iam-authenticator /usr/local/bin/ecs-cli
 
 # Configure SSM
 RUN set -ex \
-    && yum install -y https://s3.eu-north-1.amazonaws.com/amazon-ssm-eu-north-1/latest/linux_arm64/amazon-ssm-agent.rpm
+    && yum install -yq https://s3.amazonaws.com/amazon-ssm-us-east-1/3.0.1390.0/linux_arm64/amazon-ssm-agent.rpm
 
 # Install env tools for runtimes
 ## Dotnet
 ENV PATH="/root/.dotnet/:/root/.dotnet/tools/:$PATH"
 RUN set -ex  \
-&& wget -nv -O /usr/local/bin/dotnet-install.sh https://dot.net/v1/dotnet-install.sh \
+&& wget -qO /usr/local/bin/dotnet-install.sh https://dot.net/v1/dotnet-install.sh \
 && chmod +x /usr/local/bin/dotnet-install.sh
 
 ##nodejs
@@ -133,11 +136,12 @@ ENV JAVA_11_HOME="/usr/lib/jvm/java-11-amazon-corretto.aarch64" \
     MAVEN_VERSION=3.6.3 \
     INSTALLED_GRADLE_VERSIONS="5.6.4 6.5" \
     GRADLE_VERSION=6.5 \
-    SBT_VERSION=1.3.12 \
+    SBT_VERSION=1.3.13 \
     GRADLE_PATH="$SRC_DIR/gradle" \
     ANT_DOWNLOAD_SHA512="4d80dc6ba23eeec7769085ddb00261b7480b596b56c6e69aa221391acbfb7338eb5855179c88222c8021095ef1f64f43caf2b4f90e8305d7c3128026d4258d06" \
     MAVEN_DOWNLOAD_SHA512="c35a1803a6e70a126e80b2b3ae33eed961f83ed74d18fcd16909b2d44d7dada3203f1ffe726c17ef8dcca2dcaa9fca676987befeadc9b9f759967a8cb77181c0" \
-    GRADLE_DOWNLOADS_SHA256="c9910513d0eed63cd8f5c7fec4cb4a05731144770104a0871234a4edc3ba3cef 6.5\nabc10bcedb58806e8654210f96031db541bcd2d6fc3161e81cb0572d6a15e821 5.6.4"
+    GRADLE_DOWNLOADS_SHA256="c9910513d0eed63cd8f5c7fec4cb4a05731144770104a0871234a4edc3ba3cef 6.5\nabc10bcedb58806e8654210f96031db541bcd2d6fc3161e81cb0572d6a15e821 5.6.4" \
+    SBT_DOWNLOAD_SHA256="854154de27a7d8c13b5a0f9a297cd1f254cc13b44588dae507e5d4fb2741bd22"
 
 ARG MAVEN_CONFIG_HOME="/root/.m2"
 ENV JAVA_HOME="$JAVA_11_HOME" \
@@ -146,14 +150,14 @@ ENV JAVA_HOME="$JAVA_11_HOME" \
 
 RUN set -ex \
     # Install Amazon Corretto 8
-    && yum install -y java-1.8.0-amazon-corretto-devel \
+    && yum install -yq java-1.8.0-amazon-corretto-devel \
     # Ensure Java cacerts symlink points to valid location
     && update-ca-trust
 
 RUN set -x \
     # Install Amazon Corretto 11
     # Note: We will use update-alternatives to make sure JDK11 has higher priority for all the tools
-    && yum install -y java-11-amazon-corretto \
+    && yum install -yq java-11-amazon-corretto \
     && for tool_path in $JAVA_HOME/bin/*; do \
           tool=`basename $tool_path`; \
           update-alternatives --install /usr/bin/$tool $tool $tool_path 10000; \
@@ -179,8 +183,8 @@ RUN set -ex \
     # Install Gradle
     && mkdir -p $GRADLE_PATH \
     && for version in $INSTALLED_GRADLE_VERSIONS; do { \
-       wget -nv "https://services.gradle.org/distributions/gradle-$version-all.zip" -O "$GRADLE_PATH/gradle-$version-all.zip" \
-       && unzip "$GRADLE_PATH/gradle-$version-all.zip" -d /usr/local \
+       wget -q "https://services.gradle.org/distributions/gradle-$version-all.zip" -O "$GRADLE_PATH/gradle-$version-all.zip" \
+       && unzip -q "$GRADLE_PATH/gradle-$version-all.zip" -d /usr/local \
        && echo -e "$GRADLE_DOWNLOADS_SHA256" | grep "$version" | sed "s|$version|$GRADLE_PATH/gradle-$version-all.zip|" | sha256sum -c - \
        && rm "$GRADLE_PATH/gradle-$version-all.zip" \
        && mkdir "/tmp/gradle-$version" \
@@ -194,11 +198,15 @@ RUN set -ex \
     && ln -s /usr/local/gradle-$GRADLE_VERSION/bin/gradle /usr/bin/gradle \
     && rm -rf $GRADLE_PATH \
     # Install SBT
-    && wget -nv https://dl.bintray.com/sbt/rpm/sbt-$SBT_VERSION.rpm \
-    && yum install -y sbt-$SBT_VERSION.rpm \
-    && rm -fr sbt-$SBT_VERSION.rpm \
-    # Cleanup
-    && rm -fr /tmp/* /var/tmp/*
+    && curl -fSL "https://github.com/sbt/sbt/releases/download/v${SBT_VERSION}/sbt-${SBT_VERSION}.tgz" -o sbt.tgz \
+    && echo "${SBT_DOWNLOAD_SHA256} *sbt.tgz" | sha256sum -c - \
+    && tar xzf sbt.tgz -C /usr/local/bin/ \
+    && rm sbt.tgz
+ENV PATH "/usr/local/bin/sbt/bin:$PATH"
+RUN sbt version
+# Cleanup
+RUN rm -fr /tmp/* /var/tmp/* \
+    && yum clean all
 #****************     END JAVA     ****************************************************
 
 
@@ -222,12 +230,12 @@ RUN set -ex \
 
 #****************      NODEJS     ****************************************************
 
-ENV NODE_10_VERSION="10.21.0"
+ENV NODE_10_VERSION="10.24.1"
 
 RUN  n $NODE_10_VERSION && npm install --save-dev -g -f grunt && npm install --save-dev -g -f grunt-cli && npm install --save-dev -g -f webpack \
      && curl -sSL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo \
      && rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg \
-     && yum install -y yarn \
+     && yum install -yq yarn \
      && yarn --version \
      && cd / && rm -rf $N_SRC_DIR; rm -rf /tmp/*
 
@@ -242,9 +250,9 @@ RUN rbenv install $RUBY_26_VERSION; rm -rf /tmp/*; rbenv global $RUBY_26_VERSION
 #**************** END RUBY *****************************************************
 
 #**************** PYTHON *****************************************************
-ENV PYTHON_37_VERSION="3.7.7"
-ENV PYTHON_PIP_VERSION=20.1.1
-ENV PYYAML_VERSION=5.3.1
+ENV PYTHON_37_VERSION="3.7.10"
+ENV PYTHON_PIP_VERSION=21.1.2
+ENV PYYAML_VERSION=5.4.1
 ENV DOCKER_COMPOSE_VERSION="1.26.0"
 
 COPY tools/runtime_configs/python/$PYTHON_37_VERSION /root/.pyenv/plugins/python-build/share/python-build/$PYTHON_37_VERSION
@@ -253,7 +261,7 @@ RUN   pyenv global  $PYTHON_37_VERSION
 RUN set -ex \
     && pip3 install --no-cache-dir --upgrade --force-reinstall "pip==$PYTHON_PIP_VERSION" \
     && pip3 install --no-cache-dir --upgrade "PyYAML==$PYYAML_VERSION" \
-    && pip3 install --no-cache-dir --upgrade setuptools wheel aws-sam-cli awscli boto3 pipenv virtualenv \
+    && pip3 install --no-cache-dir --upgrade 'setuptools==57.4.0' wheel aws-sam-cli awscli boto3 pipenv virtualenv \
     && pip3 install --no-cache-dir "docker-compose==$DOCKER_COMPOSE_VERSION" \
     && docker-compose version
 
@@ -281,12 +289,12 @@ ENV GOLANG_14_DOWNLOAD_SHA256="fe5b6f6e441f3cb7b53ebf1a010bbebcb720ac98124984cfe
 RUN set -ex \
     && mkdir -p "$GOPATH/src" "$GOPATH/bin" \
     && chmod -R 777 "$GOPATH" \
-    && wget -nv "https://dl.google.com/go/go$GOLANG_14_VERSION.linux-arm64.tar.gz" -O /tmp/golang.tar.gz \
+    && wget -q "https://dl.google.com/go/go$GOLANG_14_VERSION.linux-arm64.tar.gz" -O /tmp/golang.tar.gz \
     && echo "$GOLANG_14_DOWNLOAD_SHA256 /tmp/golang.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/golang.tar.gz -C /tmp \
     && mv /tmp/go /usr/local/go14  \
     && rm -fr /tmp/* /var/tmp/* \
-    && wget -nv "https://github.com/golang/dep/releases/download/v$DEP_VERSION/$DEP_BINARY" -O "$GOPATH/bin/dep" \
+    && wget -q "https://github.com/golang/dep/releases/download/v$DEP_VERSION/$DEP_BINARY" -O "$GOPATH/bin/dep" \
     && chmod +x "$GOPATH/bin/dep"
 
 RUN ln -s /usr/local/go14 /usr/local/go
@@ -298,7 +306,7 @@ ENV GOLANG_13_VERSION="1.13.15"
 ENV GOLANG_13_DOWNLOAD_SHA256="a5c59e3f0aeaf6e939790152a8bfabb91d70c9787afb7aee06aef9bd4411c551"
 
 RUN set -ex \
-    && wget -nv "https://dl.google.com/go/go$GOLANG_13_VERSION.linux-arm64.tar.gz" -O /tmp/golang.tar.gz \
+    && wget -q "https://dl.google.com/go/go$GOLANG_13_VERSION.linux-arm64.tar.gz" -O /tmp/golang.tar.gz \
     && echo "$GOLANG_13_DOWNLOAD_SHA256 /tmp/golang.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/golang.tar.gz -C /tmp \
     && mv /tmp/go /usr/local/go13  \
@@ -310,7 +318,7 @@ ENV GOLANG_12_VERSION="1.12.17"
 ENV GOLANG_12_DOWNLOAD_SHA256="9d0819cce1451abdb090071880fe8771f16a3bcee71d6f6906023d17799574e2"
 
 RUN set -ex \
-    && wget -nv "https://dl.google.com/go/go$GOLANG_12_VERSION.linux-arm64.tar.gz" -O /tmp/golang.tar.gz \
+    && wget -q "https://dl.google.com/go/go$GOLANG_12_VERSION.linux-arm64.tar.gz" -O /tmp/golang.tar.gz \
     && echo "$GOLANG_12_DOWNLOAD_SHA256 /tmp/golang.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/golang.tar.gz -C /tmp \
     && mv /tmp/go /usr/local/go12  \
@@ -327,8 +335,8 @@ ENV DOCKER_BUCKET="download.docker.com" \
     DOCKER_CHANNEL="stable" \
     DIND_COMMIT="3b5fac462d21ca164b3778647420016315289034"
 
-ENV DOCKER_SHA256="9cd49fe82f6b7ec413b04daef35bc0c87b01d6da67611e5beef36291538d3145"
-ENV DOCKER_VERSION="19.03.11"
+ENV DOCKER_SHA256="0259f8b6572f02cf0dafd7388ca0e4adfdbbfaba81cfb1b7443e89fccbed22c7"
+ENV DOCKER_VERSION="20.10.9"
 
 VOLUME /var/lib/docker
 
@@ -344,11 +352,11 @@ RUN set -ex \
     && useradd -g dockremap dockremap \
     && echo 'dockremap:165536:65536' >> /etc/subuid \
     && echo 'dockremap:165536:65536' >> /etc/subgid \
-    && wget "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hack/dind" -O /usr/local/bin/dind \
+    && wget -q "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hack/dind" -O /usr/local/bin/dind \
     && chmod +x /usr/local/bin/dind
 
 #Python 3.8
-ENV PYTHON_38_VERSION="3.8.3"
+ENV PYTHON_38_VERSION="3.8.10"
 
 COPY tools/runtime_configs/python/$PYTHON_38_VERSION /root/.pyenv/plugins/python-build/share/python-build/$PYTHON_38_VERSION
 RUN   env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install $PYTHON_38_VERSION; rm -rf /tmp/*
@@ -356,12 +364,25 @@ RUN   pyenv global  $PYTHON_38_VERSION
 RUN set -ex \
     && pip3 install --no-cache-dir --upgrade --force-reinstall "pip==$PYTHON_PIP_VERSION" \
     && pip3 install --no-cache-dir --upgrade "PyYAML==$PYYAML_VERSION" \
-    && pip3 install --no-cache-dir --upgrade setuptools wheel aws-sam-cli awscli boto3 pipenv virtualenv \
+    && pip3 install --no-cache-dir --upgrade 'setuptools==57.4.0' wheel aws-sam-cli awscli boto3 pipenv virtualenv \
+    && pip3 install --no-cache-dir "docker-compose==$DOCKER_COMPOSE_VERSION" \
+    && docker-compose version
+
+#Python 3.9
+ENV PYTHON_39_VERSION="3.9.5"
+
+COPY tools/runtime_configs/python/$PYTHON_39_VERSION /root/.pyenv/plugins/python-build/share/python-build/$PYTHON_39_VERSION
+RUN   env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install $PYTHON_39_VERSION; rm -rf /tmp/*
+RUN   pyenv global  $PYTHON_39_VERSION
+RUN set -ex \
+    && pip3 install --no-cache-dir --upgrade --force-reinstall "pip==$PYTHON_PIP_VERSION" \
+    && pip3 install --no-cache-dir --upgrade "PyYAML==$PYYAML_VERSION" \
+    && pip3 install --no-cache-dir --upgrade 'setuptools==57.4.0' wheel aws-sam-cli awscli boto3 pipenv virtualenv \
     && pip3 install --no-cache-dir "docker-compose==$DOCKER_COMPOSE_VERSION" \
     && docker-compose version
 
 # Node 12
-ENV NODE_12_VERSION="12.18.0"
+ENV NODE_12_VERSION="12.22.2"
 
 RUN  n $NODE_12_VERSION && npm install --save-dev -g -f grunt && npm install --save-dev -g -f grunt-cli && npm install --save-dev -g -f webpack \
      && rm -rf /tmp/*
@@ -416,5 +437,4 @@ COPY amazon-ssm-agent.json          /etc/amazon/ssm/
 ENTRYPOINT ["dockerd-entrypoint.sh"]
 
 #=======================End of layer: aarch64_v2  =================
-
 
