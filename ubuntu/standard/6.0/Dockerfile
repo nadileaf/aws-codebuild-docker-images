@@ -101,101 +101,101 @@ RUN curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscli
 
 # Install env tools for runtimes
 # Dotnet
-ENV PATH "/root/.dotnet/:/root/.dotnet/tools/:$PATH"
-RUN set -ex  \
-&& wget -qO /usr/local/bin/dotnet-install.sh https://dot.net/v1/dotnet-install.sh \
-&& chmod +x /usr/local/bin/dotnet-install.sh
+# ENV PATH "/root/.dotnet/:/root/.dotnet/tools/:$PATH"
+# RUN set -ex  \
+# && wget -qO /usr/local/bin/dotnet-install.sh https://dot.net/v1/dotnet-install.sh \
+# && chmod +x /usr/local/bin/dotnet-install.sh
 
 #nodejs
-ARG SRC_DIR="/usr/src"
-ARG N_SRC_DIR="$SRC_DIR/n"
-RUN git clone https://github.com/tj/n $N_SRC_DIR \
-     && cd $N_SRC_DIR && make install 
+# ARG SRC_DIR="/usr/src"
+# ARG N_SRC_DIR="$SRC_DIR/n"
+# RUN git clone https://github.com/tj/n $N_SRC_DIR \
+#      && cd $N_SRC_DIR && make install 
 
 #ruby
-ARG RBENV_SRC_DIR="/usr/local/rbenv"
+# ARG RBENV_SRC_DIR="/usr/local/rbenv"
 
-ENV PATH="/root/.rbenv/shims:$RBENV_SRC_DIR/bin:$RBENV_SRC_DIR/shims:$PATH" \
-    RUBY_BUILD_SRC_DIR="$RBENV_SRC_DIR/plugins/ruby-build"
+# ENV PATH="/root/.rbenv/shims:$RBENV_SRC_DIR/bin:$RBENV_SRC_DIR/shims:$PATH" \
+#     RUBY_BUILD_SRC_DIR="$RBENV_SRC_DIR/plugins/ruby-build"
 
-RUN set -ex \
-    && git clone https://github.com/rbenv/rbenv.git $RBENV_SRC_DIR \
-    && mkdir -p $RBENV_SRC_DIR/plugins \
-    && git clone https://github.com/rbenv/ruby-build.git $RUBY_BUILD_SRC_DIR \
-    && sh $RUBY_BUILD_SRC_DIR/install.sh
+# RUN set -ex \
+#     && git clone https://github.com/rbenv/rbenv.git $RBENV_SRC_DIR \
+#     && mkdir -p $RBENV_SRC_DIR/plugins \
+#     && git clone https://github.com/rbenv/ruby-build.git $RUBY_BUILD_SRC_DIR \
+#     && sh $RUBY_BUILD_SRC_DIR/install.sh
 
 #python
 RUN curl https://pyenv.run | bash
 ENV PATH="/root/.pyenv/shims:/root/.pyenv/bin:$PATH"
 
 #php
-RUN curl -L https://raw.githubusercontent.com/phpenv/phpenv-installer/master/bin/phpenv-installer | bash
-ENV PATH="/root/.phpenv/shims:/root/.phpenv/bin:$PATH"
+# RUN curl -L https://raw.githubusercontent.com/phpenv/phpenv-installer/master/bin/phpenv-installer | bash
+# ENV PATH="/root/.phpenv/shims:/root/.phpenv/bin:$PATH"
 
 #go
-RUN git clone https://github.com/syndbg/goenv.git $HOME/.goenv
-ENV PATH="/root/.goenv/shims:/root/.goenv/bin:/go/bin:$PATH"
-ENV GOENV_DISABLE_GOPATH=1
-ENV GOPATH="/go"
+# RUN git clone https://github.com/syndbg/goenv.git $HOME/.goenv
+# ENV PATH="/root/.goenv/shims:/root/.goenv/bin:/go/bin:$PATH"
+# ENV GOENV_DISABLE_GOPATH=1
+# ENV GOPATH="/go"
 
 #=======================End of layer: tools  =================
 FROM tools AS runtimes
 
 #****************     .NET-CORE     *******************************************************
 
-ENV DOTNET_6_SDK_VERSION="6.0.301"
-ENV DOTNET_ROOT="/root/.dotnet"
+# ENV DOTNET_6_SDK_VERSION="6.0.301"
+# ENV DOTNET_ROOT="/root/.dotnet"
 
-# Add .NET Core 6 Global Tools install folder to PATH
-RUN  /usr/local/bin/dotnet-install.sh -v $DOTNET_6_SDK_VERSION \
-     && dotnet --list-sdks \
-     && rm -rf /tmp/*
+# # Add .NET Core 6 Global Tools install folder to PATH
+# RUN  /usr/local/bin/dotnet-install.sh -v $DOTNET_6_SDK_VERSION \
+#      && dotnet --list-sdks \
+#      && rm -rf /tmp/*
 
-# Trigger the population of the local package cache
-ENV NUGET_XMLDOC_MODE skip
-RUN set -ex \
-    && mkdir warmup \
-    && cd warmup \
-    && dotnet new \
-    && cd .. \
-    && rm -rf warmup \
-    && rm -rf /tmp/NuGetScratch
+# # Trigger the population of the local package cache
+# ENV NUGET_XMLDOC_MODE skip
+# RUN set -ex \
+#     && mkdir warmup \
+#     && cd warmup \
+#     && dotnet new \
+#     && cd .. \
+#     && rm -rf warmup \
+#     && rm -rf /tmp/NuGetScratch
 
-# Install Powershell Core
-# See instructions at https://docs.microsoft.com/en-us/powershell/scripting/setup/installing-powershell-core-on-linux
-ARG POWERSHELL_VERSION=7.2.4
-ARG POWERSHELL_DOWNLOAD_URL=https://github.com/PowerShell/PowerShell/releases/download/v$POWERSHELL_VERSION/powershell-$POWERSHELL_VERSION-linux-x64.tar.gz
-ARG POWERSHELL_DOWNLOAD_SHA=935B874A2E5F5662AB23EFBE7392DC96C27D4FD064041D28A25A487EC5F6CC2E
+# # Install Powershell Core
+# # See instructions at https://docs.microsoft.com/en-us/powershell/scripting/setup/installing-powershell-core-on-linux
+# ARG POWERSHELL_VERSION=7.2.4
+# ARG POWERSHELL_DOWNLOAD_URL=https://github.com/PowerShell/PowerShell/releases/download/v$POWERSHELL_VERSION/powershell-$POWERSHELL_VERSION-linux-x64.tar.gz
+# ARG POWERSHELL_DOWNLOAD_SHA=935B874A2E5F5662AB23EFBE7392DC96C27D4FD064041D28A25A487EC5F6CC2E
 
-RUN set -ex \
-    && curl -SL $POWERSHELL_DOWNLOAD_URL --output powershell.tar.gz \
-    && echo "$POWERSHELL_DOWNLOAD_SHA powershell.tar.gz" | sha256sum -c - \
-    && mkdir -p /opt/microsoft/powershell/$POWERSHELL_VERSION \
-    && tar zxf powershell.tar.gz -C /opt/microsoft/powershell/$POWERSHELL_VERSION \
-    && rm powershell.tar.gz \
-    && ln -s /opt/microsoft/powershell/$POWERSHELL_VERSION/pwsh /usr/bin/pwsh
+# RUN set -ex \
+#     && curl -SL $POWERSHELL_DOWNLOAD_URL --output powershell.tar.gz \
+#     && echo "$POWERSHELL_DOWNLOAD_SHA powershell.tar.gz" | sha256sum -c - \
+#     && mkdir -p /opt/microsoft/powershell/$POWERSHELL_VERSION \
+#     && tar zxf powershell.tar.gz -C /opt/microsoft/powershell/$POWERSHELL_VERSION \
+#     && rm powershell.tar.gz \
+#     && ln -s /opt/microsoft/powershell/$POWERSHELL_VERSION/pwsh /usr/bin/pwsh
 #****************     END .NET-CORE     *******************************************************
 
 
 #****************      NODEJS     ****************************************************
 
-ENV NODE_16_VERSION="16.15.1"
+# ENV NODE_16_VERSION="16.15.1"
 
-RUN  n $NODE_16_VERSION && npm install --save-dev -g -f grunt && npm install --save-dev -g -f grunt-cli && npm install --save-dev -g -f webpack \
-     && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
-     && echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list \
-     && apt-get update && apt-get install -y -qq --no-install-recommends yarn \
-     && yarn --version \
-     && cd / && rm -rf $N_SRC_DIR && rm -rf /tmp/*
+# RUN  n $NODE_16_VERSION && npm install --save-dev -g -f grunt && npm install --save-dev -g -f grunt-cli && npm install --save-dev -g -f webpack \
+#      && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
+#      && echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list \
+#      && apt-get update && apt-get install -y -qq --no-install-recommends yarn \
+#      && yarn --version \
+#      && cd / && rm -rf $N_SRC_DIR && rm -rf /tmp/*
 
 #****************      END NODEJS     ****************************************************
 
 #**************** RUBY *********************************************************
 
-ENV RUBY_31_VERSION="3.1.2"
+# ENV RUBY_31_VERSION="3.1.2"
 
-RUN rbenv install $RUBY_31_VERSION && rm -rf /tmp/* \
-    && rbenv global $RUBY_31_VERSION && ruby -v
+# RUN rbenv install $RUBY_31_VERSION && rm -rf /tmp/* \
+#     && rbenv global $RUBY_31_VERSION && ruby -v
 
 #**************** END RUBY *****************************************************
 
@@ -216,24 +216,24 @@ RUN set -ex \
 #**************** END PYTHON *****************************************************
 
 #****************      PHP     ****************************************************
-ENV PHP_81_VERSION="8.1.6"
+# ENV PHP_81_VERSION="8.1.6"
 
-COPY tools/runtime_configs/php/$PHP_81_VERSION /root/.phpenv/plugins/php-build/share/php-build/definitions/$PHP_81_VERSION
-RUN phpenv install $PHP_81_VERSION && rm -rf /tmp/* && phpenv global $PHP_81_VERSION
-RUN echo "memory_limit = 1G;" >> "/root/.phpenv/versions/$PHP_81_VERSION/etc/conf.d/memory.ini"
+# COPY tools/runtime_configs/php/$PHP_81_VERSION /root/.phpenv/plugins/php-build/share/php-build/definitions/$PHP_81_VERSION
+# RUN phpenv install $PHP_81_VERSION && rm -rf /tmp/* && phpenv global $PHP_81_VERSION
+# RUN echo "memory_limit = 1G;" >> "/root/.phpenv/versions/$PHP_81_VERSION/etc/conf.d/memory.ini"
 
-# Install Composer globally
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
+# # Install Composer globally
+# RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
 #****************      END PHP     ****************************************************
 
 #****************     GOLANG     ****************************************************
-ENV GOLANG_18_VERSION="1.18.3"
+# ENV GOLANG_18_VERSION="1.18.3"
 
-RUN goenv install $GOLANG_18_VERSION && rm -rf /tmp/* && \
-    goenv global  $GOLANG_18_VERSION && \
-    go env -w GO111MODULE=auto
+# RUN goenv install $GOLANG_18_VERSION && rm -rf /tmp/* && \
+#     goenv global  $GOLANG_18_VERSION && \
+#     go env -w GO111MODULE=auto
 
-RUN go get -u github.com/golang/dep/cmd/dep
+# RUN go get -u github.com/golang/dep/cmd/dep
 #****************      END GOLANG     *******************************
 
 #=======================End of layer: runtimes  =================
@@ -368,11 +368,11 @@ VOLUME /var/lib/docker
 FROM runtimes_n_corretto AS std_v6
 
 # Activate runtime versions specific to image version.
-RUN n $NODE_16_VERSION
+# RUN n $NODE_16_VERSION
 RUN pyenv  global $PYTHON_310_VERSION
-RUN phpenv global $PHP_81_VERSION
-RUN rbenv  global $RUBY_31_VERSION
-RUN goenv global  $GOLANG_18_VERSION
+# RUN phpenv global $PHP_81_VERSION
+# RUN rbenv  global $RUBY_31_VERSION
+# RUN goenv global  $GOLANG_18_VERSION
 
 # Configure SSH
 COPY ssh_config /root/.ssh/config
@@ -384,3 +384,8 @@ COPY amazon-ssm-agent.json /etc/amazon/ssm/amazon-ssm-agent.json
 ENTRYPOINT ["/usr/local/bin/dockerd-entrypoint.sh"]
 
 #=======================END of STD:6.0  =================
+
+RUN echo "[repositories]" >> ~/.sbt/repositories && \
+    echo "  local" >> ~/.sbt/repositories && \
+    echo "  aliyun: https://maven.aliyun.com/repository/public" >> ~/.sbt/repositories && \
+    echo "  central: https://repo1.maven.org/maven2/" >> ~/.sbt/repositories
