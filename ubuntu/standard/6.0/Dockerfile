@@ -388,4 +388,4 @@ ENTRYPOINT ["/usr/local/bin/dockerd-entrypoint.sh"]
 RUN echo "[repositories]" >> ~/.sbt/repositories && \
     echo "  local" >> ~/.sbt/repositories && \
     echo "  aliyun: https://maven.aliyun.com/repository/public" >> ~/.sbt/repositories && \
-    echo "  central: https://repo1.maven.org/maven2/" >> ~/.sbt/repositories
+    echo "  maven-central" >> ~/.sbt/repositories
